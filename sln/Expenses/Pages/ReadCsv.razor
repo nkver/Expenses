@@ -1,0 +1,217 @@
+﻿@page "/readcsv"
+@using Expenses.Models;
+@using Expenses.Logic;
+@using Blazor.FileReader;
+@inject ReadCsvService reader;
+@inject CreateDbRecords creator;
+@inject IFileReaderService fileReaderService;
+@inherits OwningComponentBase<Expenses.Data.ExpensesContext>;
+
+
+<h1>CSV Reader</h1>
+
+<p>Current transactions in DB: (@Service.Transactions.Count())</p>
+
+<style>
+    .@dropContainerStyle {
+        display: block;
+        padding: 20px;
+        margin-bottom: 10px;
+        border: 1px dashed black;
+        border-radius: 5px;
+        position: relative;
+    }
+    .@dropContainerHoverStyle {
+        border-color: orangered;
+        font-weight: bold;
+    }
+    input.clickable {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        opacity: 0;
+        margin-top: -20px;
+        margin-left: -20px;
+        cursor: pointer;
+    }
+</style>
+
+<div class="@DropContainerActiveStyle">
+    <input type="file"
+           class="clickable"
+           @ref=targetFiles
+           @oninput="OnInputChange"
+           @ondragenter=OnHoverEnter
+           @ondragleave=OnHoverLeave
+           multiple />
+    Drag and drop file(s) here. Or click to select file(s) from your system
+
+    @foreach (var file in CurrentFileList)
+    {
+        <br />@file.Name
+    }
+</div>
+<p>@Output</p>
+<button @onclick="ReadClick" class="btn btn-primary">Read Csv</button>
+<button @onclick="WriteClick" class="btn btn-primary">Write</button>
+<button @onclick="ClearClick" class="btn btn-primary">Clear</button>
+<br />
+
+<p>New records added: @_records.Count()</p>
+
+<table class="table">
+    <thead>
+        <tr>
+            <th>Datum</th>
+            <th>Naam</th>
+            <th>Omschrijving</th>
+            <th>Tegenrekening</th>
+            <th>Bedrag</th>
+            <th>Categorie</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var record in _records)
+        {
+            <tr>
+                <td>@record.Date</td>
+                <td>@record.Name</td>
+                <td>@record.Description</td>
+                <td>@record.IbanTo</td>
+                <td>@record.Ammount</td>
+                <td>
+                    <select id="Categories">
+                        <option></option>
+                        @foreach (var category in Categories)
+                        {
+                            <option value="@category.Id">@category.Value</option>
+                        }
+                    </select>      
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+
+
+@code {
+
+    ElementReference dropTargetElement;
+    ElementReference targetFiles;
+    IFileReaderRef newFileList;
+    List<IFileInfo> CurrentFileList { get; } = new List<IFileInfo>();
+    List<Category> Categories;
+
+    const string dropContainerHoverStyle= "hover-over-drop-container";
+    const string dropContainerStyle = "drop-container";
+    private List<string> _activeStyling = new List<string>() { dropContainerStyle };
+    string DropContainerActiveStyle => string.Join(" ", _activeStyling);
+
+    private List<Transaction> _records = new List<Transaction>();
+
+    string Output { get; set; }
+
+
+    protected override async Task OnAfterRenderAsync(bool isFirstRender)
+    {
+        if (isFirstRender)
+        {
+            Categories = await GetCategoriesAsync();
+            newFileList = fileReaderService.CreateReference(targetFiles);
+            Output = "No file(s) selected";
+            this.StateHasChanged();
+        }
+    }
+
+    public async Task OnInputChange(EventArgs e)
+    {
+        _activeStyling.Remove(dropContainerHoverStyle);
+        this.StateHasChanged();
+        await this.RefreshCurrentFileList(newFileList, CurrentFileList);
+    }
+
+    public async Task ReadClick()
+    {
+        await ReadFile(newFileList);
+    }
+
+    public async Task ReadFile(IFileReaderRef fileList)
+    {
+        foreach (var file in await fileList.EnumerateFilesAsync())
+        {
+            var ding = await file.OpenReadAsync();
+
+
+            var fileInfo = await file.ReadFileInfoAsync();
+            Output = $"Reading file {fileInfo.Name}";
+            this.StateHasChanged();
+
+            using (var stream = await file.CreateMemoryStreamAsync(4096))
+            {
+                _records = await reader.DoReadTinyCsv(stream);
+                Output = $"Done reading file {fileInfo.Name}";
+            }
+
+            this.StateHasChanged();
+        }
+    }
+
+    public async Task WriteClick()
+    {
+        await WriteFile(newFileList);
+    }
+
+    public async Task WriteFile(IFileReaderRef fileList)
+    {
+        foreach (var file in await fileList.EnumerateFilesAsync())
+        {
+            var fileInfo = await file.ReadFileInfoAsync();
+            Output = $"Writing file {fileInfo.Name} to database";
+            this.StateHasChanged();
+
+            using (var stream = await file.CreateMemoryStreamAsync(4096))
+            {
+                await creator.AddTransactions(stream);
+                Output = $"Done writing file {fileInfo.Name} to database";
+            }
+            this.StateHasChanged();
+        }
+    }
+
+    public async Task ClearClick()
+    {
+        await newFileList.ClearValue();
+        CurrentFileList.Clear();
+        Output = "Cleared files";
+        this.StateHasChanged();
+    }
+
+    private async Task RefreshCurrentFileList(IFileReaderRef newFileList, List<IFileInfo> currentList)
+    {
+        currentList.Clear();
+        foreach (var file in await newFileList.EnumerateFilesAsync())
+        {
+            var fileInfo = await file.ReadFileInfoAsync();
+            currentList.Add(fileInfo);
+        }
+        Output = "Added file";
+        this.StateHasChanged();
+    }
+
+    public void OnHoverEnter(EventArgs e)
+    {
+        _activeStyling.Add(dropContainerHoverStyle);
+    }
+
+    public void OnHoverLeave(EventArgs e)
+    {
+        _activeStyling.Remove(dropContainerHoverStyle);
+    }
+
+    public async Task<List<Category>> GetCategoriesAsync()
+    {
+        return await creator.GetCategories();
+    }
+
+}

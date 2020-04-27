@@ -1,0 +1,68 @@
+﻿@page "/config"
+@using Expenses.Models;
+@using Expenses.Logic;
+@inject CreateDbRecords creator;
+
+<h2>Config</h2>
+
+<table class="table">
+    <thead>
+        <tr>
+            <th>Category</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var category in categories)
+        {   
+            <tr>
+                <td>@category.Value</td>
+                <td>
+                    <button @onclick="() => DeleteCategory(category.Id)" class="btn btn-danger">Delete</button>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+<br />
+<input placeholder="New category" @bind="newCategory" />
+<button @onclick="AddCategory">Add</button>
+
+@code {
+    private IList<Category> categories = new List<Category>();
+    private string newCategory;
+
+    protected override async Task OnAfterRenderAsync(bool isFirstRender)
+    {
+        if (isFirstRender)
+        {
+            await GetCategoriesAsync();
+            this.StateHasChanged();
+        }
+    }
+
+    private async Task AddCategory()
+    {
+        if (!string.IsNullOrWhiteSpace(newCategory))
+        {
+            await creator.AddCategory(newCategory);
+            newCategory = string.Empty;
+
+            await GetCategoriesAsync();
+            this.StateHasChanged();
+        }
+    }
+
+    public async Task GetCategoriesAsync()
+    {
+        categories = await creator.GetCategories();
+    }
+
+    public async Task DeleteCategory(int id)
+    {
+        await creator.DeleteCategory(id);
+        await GetCategoriesAsync();
+        this.StateHasChanged();
+    }
+}
