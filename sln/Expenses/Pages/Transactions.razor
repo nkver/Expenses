@@ -1,0 +1,127 @@
+﻿@page "/Transactions"
+@using Expenses.Models;
+@using Expenses.Logic;
+@using Expenses.Pages.Components;
+@inject CreateDbRecords creator;
+
+<h1>CSV Reader</h1>
+
+<p>Current transactions in DB: @transactions.Count()</p>
+
+<Upload Parent="instanceReference"></Upload>
+
+<table class="table">
+    <thead>
+        <tr>
+            <th>Datum</th>
+            <th>Naam</th>
+            <th>Omschrijving</th>
+            <th>Tegenrekening</th>
+            <th>Bedrag</th>
+            <th>Categorie</th>
+            <th>Subcategorie</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var transaction in transactions)
+        {
+            <tr>
+                <td>@transaction.Date</td>
+                <td>@transaction.Name</td>
+                <td>@transaction.Description</td>
+                <td>@transaction.IbanTo</td>
+                <td>@transaction.Ammount</td>
+                <td>
+                    <select id="Categories" @onchange="@(e => SetCategory(e, transaction))">
+                        @if (@transaction.Category != null)
+                        {
+                            <option value="@transaction.Category.Id">
+                                @transaction.Category.Name
+                            </option>
+                        }
+                        <option />
+                        @foreach (var category in categories)
+                        {
+                            <option value="@category.Id">@category.Name</option>
+                        }
+                    </select>
+                </td>
+                <td>
+                    <select id="Subcategories" @onchange="@(e => SetSubcategory(e, transaction))">
+                        @if (transaction.Category != null)
+                        {
+                            @if (@transaction.Subcategory != null)
+                            {
+                                <option value="@transaction.Subcategory.Id">
+                                    @transaction.Subcategory.Name
+                                </option>
+                            }
+                            <option />
+                            @if (transaction.Category.Subcategories != null)
+                            {
+                                @foreach (var subcategory in transaction.Category.Subcategories)
+                                {
+                                    <option value="@subcategory.Id">@subcategory.Name</option>
+                                }
+                            }
+                        }
+                    </select>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+
+
+@code {
+    public Transactions instanceReference;
+    private IEnumerable<Transaction> transactions;
+    private IEnumerable<Category> categories;
+    private IEnumerable<Subcategory> Subcategories;
+    private Category SelectedCategory { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        instanceReference = this;
+        await GetTransactionsAsync();
+        categories = await GetCategoriesAsync();
+    }
+
+    public async Task GetTransactionsAsync()
+    {
+        transactions = await creator.GetTransactions();
+        this.StateHasChanged();
+    }
+
+    public async Task<IEnumerable<Category>> GetCategoriesAsync()
+    {
+        return await creator.GetCategories();
+    }
+
+    public async Task SetCategory(ChangeEventArgs e, Transaction transaction)
+    {
+        if (!string.IsNullOrEmpty(e.Value.ToString()))
+            transaction.Category = categories.FirstOrDefault(x => x.Id == int.Parse(e.Value.ToString()));
+        else
+            transaction.Category = null;
+
+        await UpdateTransaction(transaction);
+    }
+
+    public async Task SetSubcategory(ChangeEventArgs e, Transaction transaction)
+    {
+        if (!string.IsNullOrEmpty(e.Value.ToString()))
+            transaction.Subcategory = transaction.Category.Subcategories.FirstOrDefault(x => x.Id == int.Parse(e.Value.ToString()));
+        else
+            transaction.Subcategory = null;
+
+        await UpdateTransaction(transaction);
+    }
+
+    public async Task UpdateTransaction(Transaction transaction)
+    {
+        await creator.UpdateTransaction(transaction);
+    }
+
+}

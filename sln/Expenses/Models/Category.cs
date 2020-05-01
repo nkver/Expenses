@@ -1,13 +1,12 @@
-﻿namespace Expenses.Models
+﻿using System.Collections.Generic;
+
+namespace Expenses.Models
 {
     public class Category
     {
         public int Id { get; set; }
-        public string Value { get; set; }
+        public string Name { get; set; }
+        public List<Subcategory> Subcategories { get; set; }
 
-        public Category(string value)
-        {
-            Value = value;
-        }
     }
 }

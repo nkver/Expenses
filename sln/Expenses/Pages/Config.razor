@@ -5,33 +5,69 @@
 
 <h2>Config</h2>
 
-<table class="table">
+<table class="table" width="100%" >
     <thead>
         <tr>
-            <th>Category</th>
-            <th></th>
+            <th>Categories</th>
+            <th />
+            <th />
         </tr>
     </thead>
     <tbody>
         @foreach (var category in categories)
-        {   
+        {
             <tr>
-                <td>@category.Value</td>
+                <td>@category.Name</td>
+                <td>
+                    <button @onclick="() => ShowSubcategories(category)" class="btn btn-primary">Show/hide subcategories</button>
+                </td>
                 <td>
                     <button @onclick="() => DeleteCategory(category.Id)" class="btn btn-danger">Delete</button>
                 </td>
             </tr>
+            if (selectedCategory == category)
+            {
+                @foreach (var subCategory in subCategories)
+                {
+                    <tr class="table-active">
+                        <td>@subCategory.Name</td>
+                        <td><button @onclick="() => DeleteSubCategory(subCategory.Id)" class="btn-danger">Delete</button></td>
+                        <td> </td>
+                    </tr>
+                }
+                <tr class="table-active">
+
+                    <td>
+                        <input placeholder="New subcategory" @bind="newSubcategoryName" />
+                        <button @onclick="AddSubCategory">Add</button>
+                    </td>
+                    <td></td>
+                    <td />
+                </tr>
+            }
         }
+        <tr>
+            <td>
+                <input placeholder="New category" @bind="newCategoryName" />
+                <button @onclick="AddCategory">Add</button>
+            </td>
+            <td />
+            <td />
+        </tr>
     </tbody>
 </table>
 
-<br />
-<input placeholder="New category" @bind="newCategory" />
-<button @onclick="AddCategory">Add</button>
+
+
+
 
 @code {
-    private IList<Category> categories = new List<Category>();
-    private string newCategory;
+    private IEnumerable<Category> categories = new List<Category>();
+    private IEnumerable<Subcategory> subCategories = new List<Subcategory>();
+    private Category selectedCategory;
+    private string newCategoryName;
+    private string newSubcategoryName;
+    private bool showSub = false;
 
     protected override async Task OnAfterRenderAsync(bool isFirstRender)
     {
@@ -44,10 +80,10 @@
 
     private async Task AddCategory()
     {
-        if (!string.IsNullOrWhiteSpace(newCategory))
+        if (!string.IsNullOrWhiteSpace(newCategoryName))
         {
-            await creator.AddCategory(newCategory);
-            newCategory = string.Empty;
+            await creator.AddCategory(newCategoryName);
+            newCategoryName = string.Empty;
 
             await GetCategoriesAsync();
             this.StateHasChanged();
@@ -64,5 +100,45 @@
         await creator.DeleteCategory(id);
         await GetCategoriesAsync();
         this.StateHasChanged();
+    }
+
+    public async Task ShowSubcategories(Category category)
+    {
+        if (selectedCategory == category)
+        {
+            selectedCategory = null;
+            this.StateHasChanged();
+            return;
+        }
+        selectedCategory = category;
+        await GetSubCategoriesAsync();
+    }
+
+    public async Task GetSubCategoriesAsync()
+    {
+        subCategories = await creator.GetSubCategoriesFor(selectedCategory.Id);
+        this.StateHasChanged();
+    }
+
+    private async Task AddSubCategory()
+    {
+        if (!string.IsNullOrWhiteSpace(newSubcategoryName))
+        {
+            var subCategory = new Subcategory()
+            {
+                Name = newSubcategoryName,
+                CategoryId = selectedCategory.Id
+            };
+            await creator.AddSubCategory(subCategory);
+            newSubcategoryName = string.Empty;
+
+            await GetSubCategoriesAsync();
+        }
+    }
+
+    public async Task DeleteSubCategory(int id)
+    {
+        await creator.DeleteSubCategory(id);
+        await GetSubCategoriesAsync();
     }
 }

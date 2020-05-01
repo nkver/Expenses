@@ -16,6 +16,20 @@ namespace Expenses.Logic
             _context = context;
         }
 
+        public async Task<IEnumerable<Transaction>> GetTransactions()
+        {
+            return await _context.Transactions.OrderBy(x => x.Date).ToListAsync();
+        }
+
+        public async Task UpdateTransaction(Transaction transaction)
+        {
+            _context.Transactions.Update(transaction);
+
+            await _context.SaveChangesAsync();
+
+            Console.WriteLine($"Updated transaction: {transaction.Id}");
+        }
+
         public async Task AddTransactions(Stream stream)
         {
             {
@@ -43,14 +57,14 @@ namespace Expenses.Logic
 
         public async Task AddCategory(string categoryName)
         {
-            var category = new Category(categoryName);
+            var category = new Category() { Name = categoryName };
             await _context.Categories.AddAsync(category);
             await _context.SaveChangesAsync();
         }
 
-        public async Task<List<Category>> GetCategories()
+        public async Task<IEnumerable<Category>> GetCategories()
         {
-            return  await _context.Categories.OrderBy(x => x.Value).ToListAsync();
+            return  await _context.Categories.OrderBy(x => x.Name).ToListAsync();
         }
         
         public async Task DeleteCategory(int id)
@@ -58,6 +72,29 @@ namespace Expenses.Logic
             var cat = await _context.Categories.FindAsync(id);
             _context.Categories.Remove(cat);
             await _context.SaveChangesAsync();
+        }
+
+        public async Task AddSubCategory(Subcategory subCategory)
+        {
+            await _context.Subcategories.AddAsync(subCategory);
+            await _context.SaveChangesAsync();
+        }
+
+        public async Task<IEnumerable<Subcategory>> GetSubCategoriesFor(int categoryId)
+        {
+            return await _context.Subcategories.Where(x => x.CategoryId.Equals(categoryId)).OrderBy(x => x.Name).ToListAsync();
+        }
+
+        public async Task DeleteSubCategory(int id)
+        {
+            var cat = await _context.Subcategories.FindAsync(id);
+            _context.Subcategories.Remove(cat);
+            await _context.SaveChangesAsync();
+        }
+
+        private bool TransactionExists(Guid id)
+        {
+            return _context.Transactions.Any(e => e.Id == id);
         }
 
     }

@@ -31,8 +31,8 @@ namespace Expenses
                 options.UseSqlite(
                     _config.GetConnectionString("DefaultConnection")));
 
-            services.AddDefaultIdentity<IdentityUser>(options => options.SignIn.RequireConfirmedAccount = true)
-                .AddEntityFrameworkStores<ExpensesContext>();
+            //services.AddDefaultIdentity<IdentityUser>(options => options.SignIn.RequireConfirmedAccount = true)
+            //    .AddEntityFrameworkStores<ExpensesContext>();
 
             services.AddRazorPages();
             services.AddServerSideBlazor().AddHubOptions( o =>
@@ -41,7 +41,6 @@ namespace Expenses
             });
 
             services.AddScoped<AuthenticationStateProvider, RevalidatingIdentityAuthenticationStateProvider<IdentityUser>>();
-            services.AddSingleton<WeatherForecastService>();
             services.AddSingleton<ReadCsvService>();
             services.AddTransient<CreateDbRecords>();
             services.AddFileReaderService();
