@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Hosting;
+using Serilog;
 
 namespace Expenses
 {
@@ -15,6 +16,9 @@ namespace Expenses
                 .ConfigureWebHostDefaults(webBuilder =>
                 {
                     webBuilder.UseStartup<Startup>();
-                });
+                })
+            .UseSerilog((hostingContext, services, loggerConfiguration) => 
+            
+            loggerConfiguration.ReadFrom.Configuration(hostingContext.Configuration));
     }
 }

@@ -7,9 +7,9 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Expenses.Areas.Identity;
-using Expenses.Data;
-using Expenses.Logic;
-using Blazor.FileReader;
+using Expenses.Infrastructure.Data;
+using Expenses.Infrastructure.Logic;
+using Tewr.Blazor.FileReader;
 
 namespace Expenses
 {
@@ -42,7 +42,7 @@ namespace Expenses
 
             services.AddScoped<AuthenticationStateProvider, RevalidatingIdentityAuthenticationStateProvider<IdentityUser>>();
             services.AddSingleton<ReadCsvService>();
-            services.AddTransient<CreateDbRecords>();
+            services.AddTransient<ExpensesData>();
             services.AddFileReaderService();
         }
 

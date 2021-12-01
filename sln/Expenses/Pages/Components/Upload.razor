@@ -1,8 +1,8 @@
-﻿@using Blazor.FileReader;
-@using Expenses.Models;
-@using Expenses.Logic;
+﻿@using Tewr.Blazor.FileReader;
+@using Domain.Models;
+@using Infrastructure.Logic;
 @inject IFileReaderService fileReaderService;
-@inject CreateDbRecords creator;
+@inject ExpensesData _data;
 
 <style>
     .@dropContainerStyle {
@@ -52,7 +52,7 @@
 @code {
 
     [Parameter] public Transactions Parent { get; set; }
-    ElementReference dropTargetElement;
+    //ElementReference dropTargetElement;
     ElementReference inputFile;
     IFileReaderRef newFileList;
     List<IFileInfo> CurrentFileList { get; } = new List<IFileInfo>();
@@ -97,7 +97,7 @@
 
             using (var stream = await file.CreateMemoryStreamAsync(4096))
             {
-                await creator.AddTransactions(stream);
+                await _data.AddTransactions(stream);
                 Output = $"Done writing file {fileInfo.Name} to database. Refresh tab to see results.";
             }
             this.StateHasChanged();

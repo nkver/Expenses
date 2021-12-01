@@ -1,7 +1,7 @@
 ﻿@page "/config"
-@using Expenses.Models;
-@using Expenses.Logic;
-@inject CreateDbRecords creator;
+@using Domain.Models;
+@using Infrastructure.Logic;
+@inject ExpensesData _data;
 
 <h2>Config</h2>
 
@@ -67,7 +67,6 @@
     private Category selectedCategory;
     private string newCategoryName;
     private string newSubcategoryName;
-    private bool showSub = false;
 
     protected override async Task OnAfterRenderAsync(bool isFirstRender)
     {
@@ -82,7 +81,7 @@
     {
         if (!string.IsNullOrWhiteSpace(newCategoryName))
         {
-            await creator.AddCategory(newCategoryName);
+            await _data.AddCategory(newCategoryName);
             newCategoryName = string.Empty;
 
             await GetCategoriesAsync();
@@ -92,12 +91,12 @@
 
     public async Task GetCategoriesAsync()
     {
-        categories = await creator.GetCategories();
+        categories = await _data.GetCategories();
     }
 
     public async Task DeleteCategory(int id)
     {
-        await creator.DeleteCategory(id);
+        await _data.DeleteCategory(id);
         await GetCategoriesAsync();
         this.StateHasChanged();
     }
@@ -116,7 +115,8 @@
 
     public async Task GetSubCategoriesAsync()
     {
-        subCategories = await creator.GetSubCategoriesFor(selectedCategory.Id);
+        subCategories = selectedCategory.Subcategories;
+        //subCategories = await _data.GetSubCategoriesFor(selectedCategory.Id);
         this.StateHasChanged();
     }
 
@@ -129,7 +129,7 @@
                 Name = newSubcategoryName,
                 CategoryId = selectedCategory.Id
             };
-            await creator.AddSubCategory(subCategory);
+            await _data.AddSubCategory(subCategory);
             newSubcategoryName = string.Empty;
 
             await GetSubCategoriesAsync();
@@ -138,7 +138,8 @@
 
     public async Task DeleteSubCategory(int id)
     {
-        await creator.DeleteSubCategory(id);
+        await _data.DeleteSubCategory(id);
         await GetSubCategoriesAsync();
+        this.StateHasChanged();
     }
 }

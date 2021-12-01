@@ -1,0 +1,269 @@
+﻿@page "/MyExpenses"
+@using Domain.Models;
+@using Domain.Models.Options;
+@using Infrastructure.Logic;
+@inject ExpensesData _data;
+
+<h2>Huishoudboekje</h2>
+
+<table class="table" width="100%">
+    <thead>
+        <tr>
+            <th>Omschrijving</th>
+            <th>Incassant</th>
+            <th>Bedrag</th>
+            <th />
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var expense in fixedExpenses)
+        {
+            <tr>
+                <td>@expense.Description</td>
+                <td>@expense.Creditor</td>
+                <td>€ @expense.Amount</td>
+
+                <td>
+                    <button @onclick="() => ToggleExpense(expense)" class="btn btn-primary">Wijzig</button>
+                </td>
+
+            </tr>
+            @if (selectedExpense == expense)
+            {
+                <tr class="table-active">
+                    <td><input type="text" placeholder="Omschrijving" @bind=@expense.Description /></td>
+                    <td><input type="text" placeholder="Incassant" @bind=@expense.Creditor /></td>
+                    <td>€ <input type="text" placeholder="Bedrag" @bind=@expense.Amount /></td>
+                    <td />
+                </tr>
+                <tr class="table-active">
+                    <td><input type="date" placeholder="Startdatum" @bind=@expense.StartDate /></td>
+                    <td>
+                        <select id="Afschrijving Interval" @onchange="@(e => SetCollectionInterval(e, expense))">
+                            @if (@expense.CollectionInterval != null)
+                            {
+                                <option value="@expense.CollectionInterval.Id">
+                                    @expense.CollectionInterval.DisplayName
+                                </option>
+                            }
+                            <option />
+                            @foreach (var interval in _intervals)
+                            {
+                                <option value="@interval.Id">@interval.DisplayName</option>
+                            }
+                        </select>
+                    </td>
+                    <td>
+                        <select id="Categories" @onchange="@(e => SetCategory(e, expense))">
+                            @if (@expense.Category != null)
+                            {
+                                <option value="@expense.Category.Id">
+                                    @expense.Category.Name
+                                </option>
+                            }
+                            <option />
+                            @foreach (var category in _categories)
+                            {
+                                <option value="@category.Id">@category.Name</option>
+                            }
+                        </select>
+                    </td>
+                    <td>
+                        <select id="Subcategories" @onchange="@(e => SetSubcategory(e, expense))">
+                            @if (@expense.Category != null)
+                            {
+                                @if (@expense.Subcategory != null)
+                                {
+                                    <option value="@expense.Subcategory.Id">
+                                        @expense.Subcategory.Name
+                                    </option>
+                                }
+                                <option />
+                                @if (@expense.Category.Subcategories != null)
+                                {
+                                    @foreach (var subcategory in expense.Category.Subcategories)
+                                    {
+                                        <option value="@subcategory.Id">@subcategory.Name</option>
+                                    }
+                                }
+                            }
+                        </select>
+                    </td>
+                </tr>
+            }
+        }
+
+
+        <button @onclick="() => ToggleAdd()" class="btn btn-primary">Nieuw</button>
+
+
+        @if (toggleAdd)
+        {
+            <tr />
+            <tr class="table-active"><input type="text" placeholder="Omschrijving" @bind="newExpenseDescription" /></tr>
+            <tr class="table-active"><input type="text" placeholder="Incassant" @bind="newExpenseCreditor" /></tr>
+            <tr class="table-active"><input type="text" placeholder="Bedrag" @bind="newExpenseAmount" /></tr>
+            <tr class="table-active"><input type="date" placeholder="Ingangsdatum" @bind="newExpenseStartDate" /></tr>
+            <tr class="table-active">
+                <td>
+                    <select id="Afschrijving Interval" @onchange="@(e => newExpenseIntervalId = e.Value.ToString())">
+                        @foreach (var interval in _intervals)
+                        {
+                            <option value="@interval.Id">@interval.DisplayName</option>
+                        }
+                    </select>
+                </td>
+            </tr>
+            <tr>
+                <select id="Categories" @onchange="@(e => newExpenseCategoryId = e.Value.ToString() )">
+                    @foreach (var category in _categories)
+                    {
+                        <option value="@category.Id">@category.Name</option>
+                    }
+                </select>
+            </tr>
+            <tr class="table-active"><button @onclick="AddExpenseAsync">Opslaan</button></tr>
+
+            }
+
+
+        </tbody>
+    </table>
+
+@code {
+    private IEnumerable<FixedExpense> fixedExpenses = new List<FixedExpense>();
+    private IEnumerable<Income> incomes = new List<Income>();
+    private IEnumerable<Category> _categories;
+    private IEnumerable<Subcategory> _subcategories;
+    private IEnumerable<Interval> _intervals;
+    private FixedExpense selectedExpense;
+    private string newExpenseDescription;
+    private string newExpenseCreditor;
+    private double newExpenseAmount;
+    private string newExpenseIntervalId;
+    private DateTime? newExpenseStartDate;
+    private string newExpenseCategoryId;
+    private Subcategory newExpenseSubCategory;
+    private bool toggleAdd;
+
+    protected override async Task OnAfterRenderAsync(bool isFirstRender)
+    {
+        if (isFirstRender)
+        {
+            await GetCategoriesAsync();
+            await GetFixedExpensesAsync();
+            await GetIncomesAsync();
+
+
+            this.StateHasChanged();
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        _intervals = TypeSafeEnum.GetAll<Interval>();
+    }
+
+    public async Task GetCategoriesAsync()
+    {
+        _categories = await _data.GetCategories();
+    }
+
+    public async Task GetFixedExpensesAsync()
+    {
+        fixedExpenses = await _data.GetFixedExpenses();
+    }
+
+    private async Task AddExpenseAsync()
+    {
+        var newExpenseCategory = !string.IsNullOrEmpty(newExpenseCategoryId)
+            ? _categories.FirstOrDefault(x => Equals(x.Id, int.Parse(newExpenseCategoryId)))
+            : null;
+
+        var newExpenseInterval = !string.IsNullOrEmpty(newExpenseIntervalId)
+        ? _intervals.FirstOrDefault(x => Equals(x.Id, int.Parse(newExpenseIntervalId)))
+        : null;
+
+        var expense = new FixedExpense(newExpenseDescription, newExpenseCreditor, newExpenseAmount, newExpenseInterval, newExpenseStartDate, newExpenseCategory, newExpenseSubCategory);
+
+        await _data.AddFixedExpense(expense);
+
+        newExpenseDescription = string.Empty;
+        newExpenseCreditor = string.Empty;
+        newExpenseAmount = 0;
+        newExpenseIntervalId = null;
+        newExpenseStartDate = null;
+        newExpenseCategoryId = null;
+        newExpenseSubCategory = null;
+
+        await GetFixedExpensesAsync();
+        this.StateHasChanged();
+    }
+
+
+    public void ToggleExpense(FixedExpense expense)
+    {
+        if (selectedExpense == expense)
+        {
+            selectedExpense = null;
+            this.StateHasChanged();
+            return;
+        }
+        selectedExpense = expense;
+    }
+
+    public void ToggleAdd()
+    {
+        toggleAdd = toggleAdd ? false : true;
+        this.StateHasChanged();
+    }
+
+    public async Task DeleteExpenseAsync(Guid id)
+    {
+        await _data.DeleteFixedExpense(id);
+        await GetFixedExpensesAsync();
+        this.StateHasChanged();
+    }
+
+    public async Task GetIncomesAsync()
+    {
+        incomes = await _data.GetIncomes();
+    }
+
+    public async Task SetCollectionInterval(ChangeEventArgs e, FixedExpense expense)
+    {
+        if (!string.IsNullOrEmpty(e.Value.ToString()))
+            expense.CollectionInterval = Interval.FromValue<Interval>(int.Parse(e.Value.ToString()));
+
+        else
+            expense.CollectionInterval = null;
+
+        await UpdateExpense(expense);
+    }
+
+    public async Task SetCategory(ChangeEventArgs e, FixedExpense expense)
+    {
+        if (!string.IsNullOrEmpty(e.Value.ToString()))
+            expense.Category = _categories.FirstOrDefault(x => x.Id == int.Parse(e.Value.ToString()));
+        else
+            expense.Category = null;
+
+        await UpdateExpense(expense);
+    }
+
+    public async Task SetSubcategory(ChangeEventArgs e, FixedExpense expense)
+    {
+        if (!string.IsNullOrEmpty(e.Value.ToString()))
+            expense.Subcategory = expense.Category.Subcategories.FirstOrDefault(x => x.Id == int.Parse(e.Value.ToString()));
+        else
+            expense.Subcategory = null;
+
+        await UpdateExpense(expense);
+    }
+
+    public async Task UpdateExpense(FixedExpense expense)
+    {
+        await _data.UpdateFixedExpense(expense);
+    }
+
+}
