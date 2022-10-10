@@ -1,8 +1,8 @@
 ﻿@using Tewr.Blazor.FileReader;
 @using Domain.Models;
-@using Infrastructure.Logic;
+@using Expenses.Domain.Interfaces;
 @inject IFileReaderService fileReaderService;
-@inject ExpensesData _data;
+@inject ITransactionDataService _transactionService;
 
 <style>
     .@dropContainerStyle {
@@ -52,7 +52,6 @@
 @code {
 
     [Parameter] public Transactions Parent { get; set; }
-    //ElementReference dropTargetElement;
     ElementReference inputFile;
     IFileReaderRef newFileList;
     List<IFileInfo> CurrentFileList { get; } = new List<IFileInfo>();
@@ -97,11 +96,11 @@
 
             using (var stream = await file.CreateMemoryStreamAsync(4096))
             {
-                await _data.AddTransactions(stream);
+                await _transactionService.AddTransactionsToAccount(Parent._selectedAccount, stream);
                 Output = $"Done writing file {fileInfo.Name} to database. Refresh tab to see results.";
             }
             this.StateHasChanged();
-            await Parent.GetTransactionsAsync();
+            Parent.UpdateState();
         }
     }
 

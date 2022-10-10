@@ -1,22 +1,23 @@
-﻿using Expenses.Domain.Models;
+﻿using Expenses.Infrastructure.Models.Csv;
 using TinyCsvParser.Mapping;
 using TinyCsvParser.TypeConverter;
 
 namespace Expenses.Infrastructure.Mapping
 {
-    public class CsvTransactionMapping : CsvMapping<Transaction>
+    public class IngCsvTransactionMapping : CsvMapping<IngTransactionDto>
     {
-        public CsvTransactionMapping() : base ()
+        public IngCsvTransactionMapping() : base()
         {
             MapProperty(0, x => x.Date, new DateTimeConverter("yyyyMMdd"));
-            MapProperty(1, x => x.Name);
-            MapProperty(2, x => x.IbanFrom);
-            MapProperty(3, x => x.IbanTo);
-            MapProperty(4, x => x.Code);
+            MapProperty(1, x => x.Description);
+            MapProperty(2, x => x.MyIban);
+            MapProperty(3, x => x.CounterIban);
+            MapProperty(4, x => x.MethodCode);
             MapProperty(5, x => x.OnOff);
             MapProperty(6, x => x.Amount);
-            MapProperty(7, x => x.Kind);
-            MapProperty(8, x => x.Description);
+            MapProperty(7, x => x.MethodDescription);
+            MapProperty(8, x => x.Comments);
+            MapProperty(9, x => x.Balance);
         }
     }
 }

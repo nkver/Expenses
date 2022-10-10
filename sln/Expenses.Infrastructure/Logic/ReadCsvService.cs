@@ -1,23 +1,22 @@
 ﻿using TinyCsvParser;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using System.Text;
-using System.IO;
-using Expenses.Domain.Models;
 using Expenses.Infrastructure.Mapping;
+using Expenses.Infrastructure.Models.Csv;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
 
 namespace Expenses.Infrastructure.Logic
 {
     public class ReadCsvService
     {
-        public async Task<List<Transaction>> DoReadCsv(Stream stream)
+        public List<IngTransactionDto> ReadCsv(Stream stream)
         {
-            var options = new CsvParserOptions(true, ',');
-            var csvMapper = new CsvTransactionMapping();
-            var csvReader = new CsvParser<Transaction>(options, csvMapper);
+            var options = new CsvParserOptions(true, ';');
+            var csvMapper = new IngCsvTransactionMapping();
+            var csvParser = new CsvParser<IngTransactionDto>(options, csvMapper);
 
-            var records = await Task.FromResult(csvReader.ReadFromStream(stream, Encoding.UTF8));
+            var records = csvParser.ReadFromStream(stream, Encoding.ASCII).ToList();
 
             var result = records.Select(x => x.Result).ToList();
 

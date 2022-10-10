@@ -1,0 +1,59 @@
+﻿@page "/overview"
+@using Expenses.Models
+@using Expenses.Domain.Models;
+@using Expenses.Domain.Options;
+@using Expenses.Domain.Interfaces;
+@inject IOverviewService _overviewService;
+
+<h2>Overzicht</h2>
+
+<table class="table" width="100%">
+    <thead>
+        <tr>
+            <th>Transactie Datum</th>
+            <th>Transacties</th>
+            <th>Saldo</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var balanceDate in _balanceOverview)
+        {
+        <tr>
+            <td>
+                @balanceDate.Date
+            </td>
+            <td>
+                @foreach(var transaction in balanceDate.ExpectedTransactions)
+                {
+                    <p>@transaction.Description @transaction.Counterparty</p>
+                }
+            </td>
+            <td>
+                @balanceDate.Balance
+            </td>
+        </tr>
+        }
+    </tbody>
+
+</table>
+
+datum
+komende afschrijvingen + saldo
+komende bijschrijvingen + saldo
+
+
+
+
+@code {
+    private List<ExpectedBalance> _balanceOverview;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var today = DateTime.Now.Date;
+        _balanceOverview = _overviewService.GetBalanceOverviewBetween(today, today.AddMonths(1), 1000);
+
+
+        base.OnInitialized();
+    }
+
+}

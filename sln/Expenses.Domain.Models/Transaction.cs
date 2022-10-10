@@ -1,12 +1,10 @@
 ﻿using System;
-using System.ComponentModel.DataAnnotations;
 
 namespace Expenses.Domain.Models
 {
     public class Transaction
     {
         public Guid Id { get; set; }
-        //[DataType(DataType.Date)]
         public DateTime Date { get; set; }
         public string Name { get; set; }
         public string IbanFrom { get; set; }
@@ -18,5 +16,14 @@ namespace Expenses.Domain.Models
         public string Description { get; set; }
         public Category Category { get; set; }
         public Subcategory Subcategory { get; set; }
+        public FixedTransaction FixedFinance { get; set; }
+
+
+        public void SetFixedFinance(FixedTransaction fixedFinance)
+        {
+            FixedFinance = fixedFinance;
+            Category = fixedFinance.Category;
+            Subcategory = fixedFinance.Subcategory;
+        }
     }
 }

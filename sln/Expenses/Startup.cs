@@ -10,6 +10,9 @@ using Expenses.Areas.Identity;
 using Expenses.Infrastructure.Data;
 using Expenses.Infrastructure.Logic;
 using Tewr.Blazor.FileReader;
+using Expenses.Domain.Interfaces;
+using Expenses.Infrastructure.Services;
+using Expenses.Domain.Services;
 
 namespace Expenses
 {
@@ -23,8 +26,6 @@ namespace Expenses
             _config = config;
         }        
 
-        // This method gets called by the runtime. Use this method to add services to the container.
-        // For more information on how to configure your application, visit https://go.microsoft.com/fwlink/?LinkID=398940
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddDbContext<ExpensesContext>(options =>
@@ -34,7 +35,7 @@ namespace Expenses
             //services.AddDefaultIdentity<IdentityUser>(options => options.SignIn.RequireConfirmedAccount = true)
             //    .AddEntityFrameworkStores<ExpensesContext>();
 
-            services.AddRazorPages();
+            services.AddRazorPages( o => o.RootDirectory = "/Pages");
             services.AddServerSideBlazor().AddHubOptions( o =>
             {
                 o.MaximumReceiveMessageSize = _config.GetValue<long>("FileSizeLimit") * 1024 * 1024;
@@ -42,11 +43,15 @@ namespace Expenses
 
             services.AddScoped<AuthenticationStateProvider, RevalidatingIdentityAuthenticationStateProvider<IdentityUser>>();
             services.AddSingleton<ReadCsvService>();
-            services.AddTransient<ExpensesData>();
+            services.AddScoped<IAccountDataService, AccountDataService>();
+            services.AddTransient<ITransactionDataService, TransactionDataService>();
+            services.AddScoped<ICategoryDataService, CategoryDataService>();
+            services.AddScoped<IFixedTransactionDataService, FixedTransactionDataService>();
+            services.AddScoped<IIntervalService, IntervalService>();
+            services.AddScoped<IOverviewService, OverviewService>();
             services.AddFileReaderService();
         }
 
-        // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
         {
             if (env.IsDevelopment())

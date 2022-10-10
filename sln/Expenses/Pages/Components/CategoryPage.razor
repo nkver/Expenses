@@ -1,0 +1,132 @@
+﻿@using Domain.Models;
+@using Domain.Interfaces;
+@inject ICategoryDataService _categoryData;
+
+
+<table class="table" width="100%">
+    <thead>
+        <tr>
+            <th>Categories</th>
+            <th />
+            <th />
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var category in categories)
+        {
+            <tr>
+                <td>@category.Name</td>
+                <td>
+                    <button @onclick="() => ToggleSubcategories(category)" class="btn btn-primary">Show/hide subcategories</button>
+                </td>
+                <td>
+                    <button @onclick="() => DeleteCategory(category.Id)" class="btn btn-danger">Delete</button>
+                </td>
+            </tr>
+            if (selectedCategory != null && selectedCategory.Id == category.Id)
+            {
+                @foreach (var subcategory in category.Subcategories)
+                {
+                    <tr class="table-active">
+                        <td>@subcategory.Name</td>
+                        <td><button @onclick="() => DeleteSubCategory(subcategory.Id)" class="btn-danger">Delete</button></td>
+                        <td> </td>
+                    </tr>
+                }
+                <tr class="table-active">
+
+                    <td>
+                        <input placeholder="New subcategory" @bind="newSubcategoryName" />
+                        <button @onclick="AddSubCategory">Add</button>
+                    </td>
+                    <td></td>
+                    <td />
+                </tr>
+            }
+        }
+        <tr>
+            <td>
+                <input placeholder="New category" @bind="newCategoryName" />
+                <button @onclick="AddCategory">Add</button>
+            </td>
+            <td />
+            <td />
+        </tr>
+    </tbody>
+</table>
+
+
+
+
+
+@code {
+    private IEnumerable<Category> categories = new List<Category>();
+    private Category selectedCategory;
+    private string newCategoryName;
+    private string newSubcategoryName;
+
+    protected override async Task OnAfterRenderAsync(bool isFirstRender)
+    {
+        if (isFirstRender)
+        {
+            GetCategories();
+        }
+    }
+
+    void GetCategories()
+    {
+        categories = _categoryData.GetCategories();
+
+        this.StateHasChanged();
+    }
+
+    private async Task AddCategory()
+    {
+        if (!string.IsNullOrWhiteSpace(newCategoryName))
+        {
+            await _categoryData.AddCategory(newCategoryName);
+            newCategoryName = string.Empty;
+
+            GetCategories();
+            this.StateHasChanged();
+        }
+    }
+
+    public async Task DeleteCategory(uint id)
+    {
+        await _categoryData.DeleteCategory(id);
+        GetCategories();
+        this.StateHasChanged();
+    }
+
+    public void ToggleSubcategories(Category category)
+    {
+        if (selectedCategory != null && selectedCategory.Id == category.Id)
+        {
+            selectedCategory = null;
+            this.StateHasChanged();
+            return;
+        }
+        selectedCategory = category;
+        this.StateHasChanged();
+    }
+
+
+    private async Task AddSubCategory()
+    {
+        if (!string.IsNullOrWhiteSpace(newSubcategoryName))
+        {
+            await _categoryData.AddSubCategory(newSubcategoryName, selectedCategory.Id);
+            newSubcategoryName = string.Empty;
+
+            GetCategories();
+
+        }
+    }
+
+    public async Task DeleteSubCategory(uint id)
+    {
+        await _categoryData.DeleteSubCategory(id);
+        GetCategories();
+    }
+}

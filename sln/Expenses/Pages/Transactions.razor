@@ -1,82 +1,93 @@
 ﻿@page "/Transactions"
 @using Domain.Models;
-@using Infrastructure.Logic;
 @using Expenses.Pages.Components;
-@inject ExpensesData _data;
+@using Domain.Interfaces;
+@using Expenses.Domain.Options;
+@inject IAccountDataService _accountService;
+@inject ICategoryDataService _categoryService;
+@inject ITransactionDataService _transactionService;
 
 <h1> CSV Reader </h1>
-   
+<label>
+    Selecteer de rekening:
+    <select id="Account" @onchange="SetAccount">
+        @foreach (var account in @_accounts)
+        {
+            <option value="@account.Iban"> @account.DisplayName </option>
+        }
+    </select>
+</label>
 
-   <p> Current transactions in DB: @_transactions.Count() </p>
-      
+<p> Current transactions for account: @_selectedAccount.Transactions.Count() </p>
 
-      <Upload Parent = "instanceReference" ></Upload>
-       
 
-       <table class= "table">
-        
-            <thead>
-        
-                <tr>
-        
-                    <th > Datum </th>        
-                    <th > Naam </th>        
-                    <th > Omschrijving </th>        
-                    <th > Tegenrekening </th>        
-                    <th > Bedrag </th>        
-                    <th > Categorie </th>        
-                    <th > Subcategorie </th>
-        
-                </tr>
-        
-            </thead>
-        
-            <tbody>
-                @foreach (var transaction in _transactions)
-                {
-                    <tr>
-                        <td> @transaction.Date </td>
-                        <td> @transaction.Name </td>
-                        <td> @transaction.Description </td>
-                        <td> @transaction.IbanTo </td>
-                        <td> @transaction.Amount </td>
-                        <td>
-                            <select id="Categories" @onchange="@(e => SetCategory(e, transaction))">
-                                @if (@transaction.Category != null)
+<Upload Parent="instanceReference"></Upload>
+
+
+<table class="table">
+
+    <thead>
+
+        <tr>
+
+            <th> Datum </th>
+            <th> Naam </th>
+            <th> Omschrijving </th>
+            <th> Tegenrekening </th>
+            <th> Bedrag </th>
+            <th> Categorie </th>
+            <th> Subcategorie </th>
+
+        </tr>
+
+    </thead>
+
+    <tbody>
+        @foreach (var transaction in _selectedAccount.Transactions)
+        {
+            <tr>
+                <td> @transaction.Date </td>
+                <td> @transaction.Description </td>
+                <td> @transaction.Comments </td>
+                <td> @transaction.IbanTo </td>
+                <td> @transaction.Amount </td>
+                <td>
+                    <select id="Categories" @onchange="@(e => SetCategory(e, transaction))">
+                        @if (@transaction.Category != null)
+                        {
+                            <option value="@transaction.Category.Id"> @transaction.Category.Name </option>
+                        }
+
+                        <option />
+
+                        @foreach (var category in @_categories)
+                        {
+                            <option value="@category.Id"> @category.Name </option>
+                        }
+                    </select>
+                </td>
+                <td>
+                    <select id="Subcategories" @onchange="@(e => SetSubcategory(e, transaction))">
+                        @if (@transaction.Category != null)
+                        {
+                            @if (@transaction.Subcategory != null)
+                            {
+                                <option value="@transaction.Subcategory.Id"> @transaction.Subcategory.Name </option>
+
+                            }
+                            <option />
+                            @if (@transaction.Category.Subcategories != null)
+                            {
+                                @foreach (var subcategory in @transaction.Category.Subcategories)
                                 {
-                                    <option value = "@transaction.Category.Id"> @transaction.Category.Name </option >
+                                    <option value="@subcategory.Id"> @subcategory.Name </option>
                                 }
-
-                                <option />
-
-                                @foreach (var category in @_categories)
-                                {
-                                    <option value = "@category.Id" > @category.Name </option >
-                                }
-                            </select>
-                        </td>
-                        <td>
-                            <select id="Subcategories" @onchange="@(e => SetSubcategory(e, transaction))">
-                                @if (@transaction.Category != null)
-                                {
-                                    @if (@transaction.Subcategory != null)
-                                    {
-                                        <option value="@transaction.Subcategory.Id"> @transaction.Subcategory.Name </option>
-
-                                    }
-                                    <option />
-                                    @if (@transaction.Category.Subcategories != null)
-                                    {
-                                        @foreach (var subcategory in @transaction.Category.Subcategories)
-                                        {
-                                            <option value="@subcategory.Id"> @subcategory.Name </option>
-                                        }
-                                    }
-                                }
-                            </select>
-                        </td>
-                    </tr>
-            }
+                            }
+                        }
+                    </select>
+                </td>
+            </tr>
+        }
 
     </tbody>
 </table>
@@ -86,56 +97,82 @@
 @code {
 
     public Transactions instanceReference;
-    private IEnumerable<Transaction> _transactions;
+    private IEnumerable<Account> _accounts;
     private IEnumerable<Category> _categories;
-    private Category SelectedCategory { get; set; }
+    internal Account _selectedAccount;
+    private string _selectedAccountIban;
+    private Category _selectedCategory;
 
     protected override async Task OnInitializedAsync()
     {
         instanceReference = this;
-        await GetTransactionsAsync();
-        await GetCategoriesAsync();
+
+        GetAccounts();
+        GetCategoriesAsync();
     }
 
-    public async Task GetTransactionsAsync()
+    void GetAccounts()
     {
-        _transactions = await _data.GetTransactions();
-        this.StateHasChanged();
+        _accounts = _accountService.GetAllAccounts();
+        GetAccount();
     }
 
-    public async Task GetCategoriesAsync()
+    void GetCategoriesAsync()
     {
-        _categories = await _data.GetCategories();
+        _categories = _categoryService.GetCategories();
     }
 
-    public async Task SetCategory(ChangeEventArgs e, Transaction transaction)
+    void SetAccount(ChangeEventArgs e)
     {
-        if (!string.IsNullOrEmpty(e.Value.ToString()))
+        if (e.Value != null)
         {
-            transaction.Category = _categories.FirstOrDefault(x => x.Id == int.Parse(e.Value.ToString()));
-            transaction.Subcategory = null;
+            _selectedAccountIban = (string)e.Value;
+            GetAccount();
         }
-        else
-            transaction.Category = null;
-
-        await UpdateTransaction(transaction);
     }
 
-    public async Task SetSubcategory(ChangeEventArgs e, Transaction transaction)
+    void GetAccount()
     {
-        if (!string.IsNullOrEmpty(e.Value.ToString()))
-            transaction.Subcategory = transaction.Category.Subcategories.FirstOrDefault(x => x.Id == int.Parse(e.Value.ToString()));
-        else
-            transaction.Subcategory = null;
-
-        await UpdateTransaction(transaction);
-    }
-
-    public async Task UpdateTransaction(Transaction transaction)
-    {
-        await _data.UpdateTransaction(transaction);
-
+        _selectedAccount = _selectedAccountIban == null
+            ? _accounts.First(x => x.Type.Equals(AccountType.Checking))
+            : _accounts.First(x => x.Iban.Equals(_selectedAccountIban));
         this.StateHasChanged();
+    }
+
+    public void UpdateState()
+    {
+        this.StateHasChanged();
+    }
+
+
+    public void SetCategory(ChangeEventArgs e, Transaction transaction)
+    {
+        var value = !string.IsNullOrEmpty(e.Value.ToString())
+            ? _categories.FirstOrDefault(x => x.Id == int.Parse(e.Value.ToString()))
+            : null;
+
+        transaction.SetCategory(value);
+        transaction.SetSubCategory(null);
+
+        UpdateTransaction(transaction);
+    }
+
+    public void SetSubcategory(ChangeEventArgs e, Transaction transaction)
+    {
+        var value = !string.IsNullOrEmpty(e.Value.ToString())
+            ? transaction.Category.Subcategories.FirstOrDefault(x => x.Id == int.Parse(e.Value.ToString()))
+            : null;
+
+        transaction.SetSubCategory(value);
+
+        UpdateTransaction(transaction);
+    }
+
+    void UpdateTransaction(Transaction transaction)
+    {
+        _transactionService.UpdateTransaction(transaction);
+
+        GetAccounts();
     }
 
 }

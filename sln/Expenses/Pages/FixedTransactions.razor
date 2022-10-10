@@ -1,0 +1,232 @@
+﻿@page "/fixedtransactions"
+@using Expenses.Models
+@using Expenses.Domain.Models;
+@using Expenses.Domain.Options;
+@using Expenses.Domain.Interfaces;
+@inject IFixedTransactionDataService _fixedTransactionDataService;
+@inject ICategoryDataService _categoryDataService;
+
+<h2>Vaste lasten</h2>
+
+<h3>Afschrijvingen</h3>
+<table class="table" width="100%">
+    <thead>
+        <tr>
+            <th>Omschrijving</th>
+            <th>Incassant</th>
+            <th>Bedrag</th>
+            <th />
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var transaction in _fixedTransactions.Where(x => x.TransactionDirection.Equals(TransactionDirection.Withdrawal)))
+        {
+            <tr>
+                <td>@transaction.Description</td>
+                <td>@transaction.CounterParty</td>
+                <td>€ @transaction.Amount</td>
+
+                <td>
+                    <button @onclick="() => ToggleTransaction(transaction)" class="btn btn-primary">Wijzig</button>
+                </td>
+
+            </tr>
+        }
+    </tbody>
+</table>
+
+<h3>Bijschrijvingen</h3>
+<table class="table" width="100%">
+    <thead>
+        <tr>
+            <th>Omschrijving</th>
+            <th>Incassant</th>
+            <th>Bedrag</th>
+            <th />
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var transaction in _fixedTransactions.Where(x => x.TransactionDirection.Equals(TransactionDirection.Deposit)))
+        {
+            <tr>
+                <td>@transaction.Description</td>
+                <td>@transaction.CounterParty</td>
+                <td>€ @transaction.Amount</td>
+
+                <td>
+                    <button @onclick="() => ToggleTransaction(transaction)" class="btn btn-primary">Wijzig</button>
+                </td>
+
+            </tr>
+        }
+
+
+        <button @onclick="() => ToggleAdd()" class="btn btn-primary">Nieuw</button>
+    </tbody>
+</table>
+
+@if (toggleAdd)
+{
+<EditForm EditContext="@_editContext" OnValidSubmit="@HandleValidAddFixedTransactionAsync">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+        <p>
+            <label for="Description">Omschrijving</label>
+            <InputText id="Description" @bind-Value="_fixedTranscationForm.Description" />
+        </p>
+        <p>
+            <label for="CounterParty">Tegenrekening</label>
+            <InputText id="CounterParty" @bind-Value="_fixedTranscationForm.CounterParty" />
+        </p>
+        <p>
+            <label for="Amount">Bedrag</label>
+            <InputNumber id="Amount" @bind-Value="_fixedTranscationForm.Amount" />
+        </p>
+        <p>
+            <label for="TransactionInterval">Betalingsinterval</label>
+            <InputSelect id="TransactionInterval" @bind-Value="_fixedTranscationForm.TransactionInterval">
+                <option value="">"Selecteer betalingsinterval ..."</option>
+                @foreach (var interval in _intervalNames)
+                    {
+                    <option value=@interval>@interval</option>
+                    }
+            </InputSelect>
+        </p>
+        <p>
+            <label for="TransactionDirection">Af-/Bijschrijving</label>
+            <InputSelect id="TransactionDirection" @bind-Value="_fixedTranscationForm.TransactionDirection">
+                @foreach (var direction in _transactionDirectionNames)
+                    {
+                    <option value=@direction>@direction</option>
+                    }
+            </InputSelect>
+        </p>
+        <p>
+            <label for="StartDate">Startdatum</label>
+            <InputDate id="StartDate" @bind-Value="_fixedTranscationForm.StartDate" />
+        </p>
+        <p>
+            <label for="EndDate">Einddatum</label>
+            <InputDate id="EndDate" @bind-Value="_fixedTranscationForm.EndDate" />
+        </p>
+        <p>
+            <label for="Category">Categorie</label>
+            <InputSelect id="Category" @bind-Value="_fixedTranscationForm.CategoryId">
+                <option value="">"Selecteer categorie ..."</option>
+                @foreach (var category in _categories)
+                    {
+                    <option value=@category.Id.ToString()>@category.Name</option>
+                    }
+            </InputSelect>
+        </p>
+        <p>
+            <label for="Subcategory">Subcategorie</label>
+            <InputSelect id="Subcategory" @bind-Value="_fixedTranscationForm.SubcategoryId">
+                @if (_subcategories == null)
+                    {
+                    <option value="-1">"Selecteer eerst een categorie ..."</option>
+                    }
+                @if (_subcategories != null)
+                    {
+                    <option value="-1">"Selecteer subcategorie ..."</option>
+                    @foreach (var subcategory in _subcategories)
+                        {
+                        <option value=@subcategory.Id.ToString()>@subcategory.Name</option>
+                        }
+                    }
+                }
+            </InputSelect>
+        </p>
+
+        <button type="submit">Indienen</button>
+</EditForm>
+
+}
+
+
+@code {
+    //https://docs.microsoft.com/en-us/aspnet/core/blazor/forms-validation?view=aspnetcore-6.0#example-form=
+    private EditContext _editContext;
+    private IEnumerable<FixedTransaction> _fixedTransactions;
+    private IEnumerable<Category> _categories;
+    private IEnumerable<Subcategory> _subcategories;
+    private FixedTransaction _selectedTransaction;
+    private bool toggleAdd;
+
+    private FixedTransactionForm _fixedTranscationForm = new();
+    private IEnumerable<string> _intervalNames = Enum.GetNames(typeof(Interval));
+    private IEnumerable<string> _transactionDirectionNames = Enum.GetNames(typeof(TransactionDirection));
+
+    protected override async Task OnInitializedAsync()
+    {
+        _editContext = new EditContext(_fixedTranscationForm);
+        _editContext.OnFieldChanged += EditContext_OnFieldChanged;
+
+
+        GetFixedTransactions();
+        GetCategories();
+
+        base.OnInitialized();
+    }
+
+    private void EditContext_OnFieldChanged(object sender, FieldChangedEventArgs e)
+    {
+        if (e.FieldIdentifier.FieldName == "CategoryId")
+        {
+            _fixedTranscationForm.SubcategoryId = null;
+            var category = _categories.First(x => x.Id == int.Parse(_fixedTranscationForm.CategoryId));
+
+            _subcategories = category.Subcategories;
+            this.StateHasChanged();
+        }
+    }
+
+    public void GetCategories()
+    {
+        _categories = _categoryDataService.GetCategories();
+        this.StateHasChanged();
+    }
+
+    public void GetFixedTransactions()
+    {
+        _fixedTransactions = _fixedTransactionDataService.GetFixedTransactions();
+        this.StateHasChanged();
+    }
+
+    private void HandleValidAddFixedTransactionAsync()
+    {
+
+
+        _fixedTransactionDataService.AddFixedTransaction(
+            _fixedTranscationForm.Description,
+            _fixedTranscationForm.CounterParty,
+            _fixedTranscationForm.Amount,
+            (ushort)_fixedTranscationForm.TransactionInterval,
+            _fixedTranscationForm.StartDate,
+            _fixedTranscationForm.EndDate,
+            (ushort)_fixedTranscationForm.TransactionDirection,
+            uint.Parse(_fixedTranscationForm.CategoryId),
+            uint.Parse(_fixedTranscationForm.SubcategoryId));
+
+        GetFixedTransactions();
+    }
+
+
+    public void ToggleTransaction(FixedTransaction transaction)
+    {
+        if (_selectedTransaction == transaction)
+        {
+            _selectedTransaction = null;
+            this.StateHasChanged();
+            return;
+        }
+        _selectedTransaction = transaction;
+    }
+
+    public void ToggleAdd()
+    {
+        toggleAdd = toggleAdd ? false : true;
+        this.StateHasChanged();
+    }
+
+}

@@ -1,0 +1,74 @@
+﻿@using Domain.Models;
+@using Domain.Interfaces;
+@inject IAccountDataService _accountService;
+
+
+<table class="table" width="100%">
+    <thead>
+        <tr>
+            <th>Accounts</th>
+            <th />
+            <th />
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var account in _accounts)
+        {
+            <tr>
+                <td>@account.DisplayName</td>
+                <td />
+                <td />
+                @*<td>
+                    <button @onclick="() => ShowSubcategories(category)" class="btn btn-primary">Show/hide subcategories</button>
+                </td>
+                <td>
+                    <button @onclick="() => DeleteCategory(category.Id)" class="btn btn-danger">Delete</button>
+                </td>*@
+            </tr>
+        }
+        <tr>
+            <td>
+                <input placeholder="New Account" @bind="newAccountDisplayName" />
+                <button @onclick="AddAccount">Add</button>
+            </td>
+            <td />
+            <td />
+        </tr>
+    </tbody>
+</table>
+
+
+
+
+
+@code {
+    private IEnumerable<Account> _accounts = new List<Account>();
+    private Account selectedAccount;
+    private string newAccountDisplayName;
+
+    protected override async Task OnAfterRenderAsync(bool isFirstRender)
+    {
+        if (isFirstRender)
+        {
+            GetAccounts();
+            this.StateHasChanged();
+        }
+    }
+
+    void GetAccounts()
+    {
+        _accounts = _accountService.GetAllAccounts();
+    }
+
+    private async Task AddAccount()
+    {
+        if (!string.IsNullOrWhiteSpace(newAccountDisplayName))
+        {
+            _accountService.CreateNewAccount(new Account("", newAccountDisplayName, 400, Domain.Options.AccountType.Checking));
+            newAccountDisplayName = string.Empty;
+
+            GetAccounts();
+            this.StateHasChanged();
+        }
+    }
+}
