@@ -1,0 +1,9 @@
+include:
+  - local: './deploy/cicd/containerize.yml'
+  - local: './deploy/cicd/deploy.yml'
+
+stages:
+  - containerize
+  - deploy-tst
+  - deploy-stg
+  - deploy-prd

@@ -1,0 +1,6 @@
+
+docker-build:
+  stage: containerize
+  script:
+    - docker build -t expenses -f ./deploy/Dockerfile .
+    - docker push expenses

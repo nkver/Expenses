@@ -1,0 +1,27 @@
+deploy:tst:
+  extends: .deploy:template
+  stage: deploy-tst
+  variables:
+    bar: "test-bar"
+
+deploy:stg:
+  extends: .deploy:template
+  stage: deploy-stg
+  variables:
+    bar: "staging-bar"
+
+deploy:prd:
+  extends: .deploy:template
+  stage: deploy-prd
+  variables:
+    bar: "prod-bar"
+
+
+### template ###
+
+.deploy:template:
+  script:
+    - helm upgrade -i \
+      --set foo=$bar \
+      expenses-deploy \
+      ./deploy/helm/expenses
